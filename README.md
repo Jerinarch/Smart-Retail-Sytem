@@ -28,7 +28,7 @@ Retail operations generate massive streams of transactional, catalog, and store 
 flowchart TD
     subgraph Sources ["1. Multi-Source Ingestion (Raw Layer)"]
         direction TB
-        S1["☁️ Supabase Cloud / Kaggle OLTP<br/>(2,702 Customer Profiles & 50 Store Outlets)"]
+        S1["☁️ Kaggle OLTP<br/>(2,702 Customer Profiles & 50 Store Outlets)"]
         S2["🌐 Live REST API Catalog<br/>FakeStore API<br/>(20 Live Catalog Items & Inventory Prices)"]
         S3["📁 GitHub CSV Data Lake<br/>(113,036 Historical Order Ledger Records)"]
         S4["📦 Self-Healing Offline Engine<br/>(Automatic Fallback Catalog on Network Drops)"]
@@ -36,11 +36,11 @@ flowchart TD
 
     subgraph ETL ["2. Python Medallion Pipeline (etl_pipeline.py)"]
         direction TB
-        B["🥉 BRONZE LAYER (Raw Extraction)<br/>• HTTP GET Requests (requests.get)<br/>• Pandas Streaming (pd.read_csv)<br/>• SQL Queries (sqlite3 / psycopg2)"]
+        B["(Raw Extraction)<br/>• HTTP GET Requests (requests.get)<br/>• Pandas Streaming (pd.read_csv)<br/>• SQL Queries (sqlite3 / psycopg2)"]
         
-        Si["🥈 SILVER LAYER (Cleaning & Key Conformation)<br/>• Deterministic MD5 Key Hashing (hashlib.md5)<br/>• Customer Country Matching & Deduplication<br/>• Time Parsing: Day, Month, Year, Quarter, Day of Week"]
+        Si[" (Cleaning & Key Conformation)<br/>• Deterministic MD5 Key Hashing (hashlib.md5)<br/>• Customer Country Matching & Deduplication<br/>• Time Parsing: Day, Month, Year, Quarter, Day of Week"]
         
-        G["🥇 GOLD LAYER (Data Warehouse Load)<br/>• Star Schema Table Creation (DDL SQL)<br/>• Foreign Key Integrity (PRAGMA foreign_keys = ON)<br/>• Fact Derivations: Total Revenue & Profit"]
+        G[" Data Warehouse Load)<br/>• Star Schema Table Creation (DDL SQL)<br/>• Foreign Key Integrity (PRAGMA foreign_keys = ON)<br/>• Fact Derivations: Total Revenue & Profit"]
         
         B -->|Extract| Si -->|Conform & Transform| G
     end
@@ -211,15 +211,6 @@ pytest tests/
 
 ---
 
-## 👥 7. Hackathon Deliverables Checklist
-- [x] Operational OLTP Database Schema (`setup_sources.py`)
-- [x] Multi-Source Extraction & Medallion ETL Workflow (`etl_pipeline.py`)
-- [x] Star Schema Analytical Data Warehouse (`data_warehouse.db`)
-- [x] Interactive Streamlit Business Intelligence Dashboard (`app.py`)
-- [x] Generative AI Natural Language to SQL Assistant (`genai_assistant.py`)
-- [x] Enterprise Quality & Governance Audit Checklist (`DATA_ARCHITECTURE_QUALITY_CHECKLIST.md`)
-- [x] Data Lineage & Source Architecture Guide (`DATA_SOURCES_EXPLAINED.md`)
-- [x] Unit Test Suite & Documentation (`tests/test_etl.py` & `README.md`)
 
 ---
 
