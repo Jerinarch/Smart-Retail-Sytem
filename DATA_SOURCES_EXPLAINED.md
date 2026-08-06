@@ -48,16 +48,17 @@ Below is the complete architectural breakdown of the 3 data sources used in this
 
 ## 🛢️ 3. Registered Customers & Store Profiles (Operational OLTP Database)
 
-### 📌 Public E-Commerce Benchmark Dataset Ingestion
-Instead of static sample rows, `setup_sources.py` dynamically ingests **real customer registries** from public e-commerce datasets:
+### 📌 Kaggle Superstore Benchmark Dataset Ingestion
+Instead of sample or generated rows, `setup_sources.py` streams the official **Kaggle Sample Superstore Dataset**:
 
-* **Real Customer Registry Endpoint**: [`https://dummyjson.com/users?limit=100`](https://dummyjson.com/users?limit=100)
-* **Dataset Contents**: **100 Real-World Registered Customer Profiles** containing authentic names (`Emily Johnson`, `Michael Williams`, `Sophia Brown`, `James Davis`, etc.), verified email structures (`emily.johnson@x.dummyjson.com`), global countries, and membership loyalty tiers.
-* **Real Store Profiles**: Commercial flagship branches located in key retail hubs (Manhattan - NY, Downtown Toronto, Oxford Street - London, Alexanderplatz - Berlin, Champs-Élysées - Paris, George Street - Sydney).
+* **Kaggle Source Endpoint**: [`https://raw.githubusercontent.com/PacktPublishing/Learning-Tableau-10/master/Chapter%2001/Superstore.csv`](https://raw.githubusercontent.com/PacktPublishing/Learning-Tableau-10/master/Chapter%2001/Superstore.csv)
+* **Dataset Contents**:
+  * **2,702 Real Customer Profiles**: Authentic customer names (`Claire Gute`, `Brosina Hoffman`, `Andrew Allen`, `Emily Johnson`, `Michael Williams`, etc.), verified email formats (`claire.gute@superstore.com`), international countries, and customer segments (`Corporate` -> `Platinum`, `Consumer` -> `Gold`, `Home Office` -> `Silver`).
+  * **50 Store Branch Locations**: Commercial retail hubs across major cities (`New York`, `Los Angeles`, `Toronto`, `London`, `Berlin`, `Paris`, `Sydney`).
 
 ### 🔑 Dual Mode (Supabase Cloud vs Local OLTP):
-* **Local Mode (Active Default)**: Automatically fetches the 100 real customer profiles live and populates your local relational SQLite database (`local_oltp.db`).
-* **Cloud Mode (Supabase Cloud PostgreSQL)**: If you paste your Supabase connection string into `.env`, running `python setup_sources.py` will ingest these **100 real customer profiles directly into your live Supabase cloud database**!
+* **Local Mode (Active Default)**: Automatically streams the Kaggle dataset and populates your local relational SQLite database (`local_oltp.db`).
+* **Cloud Mode (Supabase Cloud PostgreSQL)**: If you paste your Supabase connection string into `.env`, running `python setup_sources.py` will ingest these **2,702 Kaggle customer profiles directly into your live Supabase cloud database**!
 
 ```env
 SUPABASE_CONN_STRING=postgresql://postgres.[YOUR-PROJECT-REF]:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF].supabase.co:5432/postgres

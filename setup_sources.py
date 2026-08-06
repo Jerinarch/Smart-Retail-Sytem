@@ -2,6 +2,7 @@ import sys
 import sqlite3
 import psycopg2
 import requests
+import io
 import urllib3
 import ssl
 import pandas as pd
@@ -14,62 +15,82 @@ try:
 except AttributeError:
     pass
 
-REAL_DUMMYJSON_USERS_URL = "https://dummyjson.com/users?limit=100"
+KAGGLE_SUPERSTORE_CSV_URL = "https://raw.githubusercontent.com/PacktPublishing/Learning-Tableau-10/master/Chapter%2001/Superstore.csv"
 
-# Real-world International Commercial Retail Store Branches
-REAL_STORE_PROFILES = [
-    ("Retail Hub - Manhattan Flagship", "New York", "NY", "United States"),
-    ("Retail Hub - Downtown Toronto", "Toronto", "ON", "Canada"),
-    ("Retail Hub - Oxford Street", "London", "Greater London", "United Kingdom"),
-    ("Retail Hub - Alexanderplatz", "Berlin", "Berlin", "Germany"),
-    ("Retail Hub - Champs-Élysées", "Paris", "Île-de-France", "France"),
-    ("Retail Hub - George Street", "Sydney", "NSW", "Australia")
-]
-
-def fetch_real_customer_dataset():
-    """Fetches real user registry profiles dynamically from public REST API / GitHub Kaggle mirrors."""
-    print(f" -> Ingesting Real Customer Registry dataset from ({REAL_DUMMYJSON_USERS_URL})...")
+def fetch_kaggle_superstore_dataset():
+    """Fetches and extracts unique customer & store profiles from Kaggle Superstore dataset."""
+    print(f" -> Ingesting Kaggle Superstore Dataset from ({KAGGLE_SUPERSTORE_CSV_URL})...")
     try:
-        response = requests.get(REAL_DUMMYJSON_USERS_URL, verify=False, timeout=10)
+        response = requests.get(KAGGLE_SUPERSTORE_CSV_URL, verify=False, timeout=15)
         if response.status_code == 200:
-            users = response.json()["users"]
-            df_users = pd.DataFrame(users)
-            
-            # Map attributes into operational OLTP customer schema
-            customers = []
+            df_raw = pd.read_csv(io.BytesIO(response.content), encoding="windows-1252")
+            print(f"   * Downloaded Kaggle Superstore dataset ({len(df_raw)} records). Processing dimensions...")
+
+            # 1. Extract Unique Customer Profiles
+            df_cust_unique = df_raw.drop_duplicates(subset=["Customer Name"]).copy()
             countries = ["United States", "Canada", "United Kingdom", "Germany", "France", "Australia"]
-            tiers = ["Gold", "Silver", "Bronze", "Platinum"]
-            
-            for idx, row in df_users.iterrows():
-                name = f"{row['firstName']} {row['lastName']}"
-                email = row["email"]
-                # Assign country based on user address or regional mapping to match sales data
-                country = countries[idx % len(countries)]
-                tier = tiers[idx % len(tiers)]
-                customers.append((name, email, country, tier))
+            segment_tier_map = {
+                "Corporate": "Platinum",
+                "Consumer": "Gold",
+                "Home Office": "Silver"
+            }
+
+            customers = []
+            seen_emails = set()
+
+            for idx, row in df_cust_unique.iterrows():
+                name = str(row["Customer Name"]).strip()
+                names = name.split()
+                first = names[0].lower() if len(names) > 0 else "user"
+                last = names[-1].lower() if len(names) > 1 else "cust"
                 
-            print(f"   * Successfully fetched {len(customers)} real customer profiles.")
-            return customers
+                email = f"{first}.{last}@superstore.com"
+                if email in seen_emails:
+                    email = f"{first}.{last}{idx}@superstore.com"
+                seen_emails.add(email)
+
+                country = countries[idx % len(countries)]
+                raw_segment = str(row.get("Customer Segment", "Consumer")).strip()
+                tier = segment_tier_map.get(raw_segment, "Gold")
+                
+                customers.append((name, email, country, tier))
+
+            # 2. Extract Unique Store Outlet Profiles
+            df_stores_unique = df_raw.drop_duplicates(subset=["City", "State"]).head(50).copy()
+            stores = []
+            for idx, row in df_stores_unique.iterrows():
+                city = str(row["City"]).strip()
+                state = str(row["State"]).strip()
+                country = countries[idx % len(countries)]
+                store_name = f"Superstore Hub - {city}"
+                stores.append((store_name, city, state, country))
+
+            print(f"   * Extracted {len(customers)} unique real customer profiles & {len(stores)} store locations.")
+            return customers, stores
         else:
             raise Exception(f"HTTP Status Code {response.status_code}")
-    except Exception as e:
-        print(f"   * Public endpoint fetch error ({e}). Loading offline Kaggle customer backup...")
-        # Offline backup dataset matching real kaggle customer structure
-        backup_customers = [
-            ("Emily Johnson", "emily.johnson@x.dummyjson.com", "United States", "Gold"),
-            ("Michael Williams", "michael.williams@x.dummyjson.com", "Canada", "Silver"),
-            ("Sophia Brown", "sophia.brown@x.dummyjson.com", "United Kingdom", "Platinum"),
-            ("James Davis", "james.davis@x.dummyjson.com", "Germany", "Gold"),
-            ("Emma Miller", "emma.miller@x.dummyjson.com", "France", "Bronze"),
-            ("Olivia Wilson", "olivia.wilson@x.dummyjson.com", "Australia", "Silver"),
-            ("Alexander Moore", "alexander.m@x.dummyjson.com", "United States", "Gold"),
-            ("Charlotte Taylor", "charlotte.t@x.dummyjson.com", "Canada", "Platinum"),
-            ("Daniel Anderson", "daniel.a@x.dummyjson.com", "United Kingdom", "Silver"),
-            ("Amelia Thomas", "amelia.t@x.dummyjson.com", "Germany", "Bronze")
-        ]
-        return backup_customers
 
-def setup_supabase_db(customers):
+    except Exception as e:
+        print(f"   * Kaggle dataset fetch failed ({e}). Loading fallback customer profiles...")
+        backup_customers = [
+            ("Claire Gute", "claire.gute@superstore.com", "United States", "Platinum"),
+            ("Brosina Hoffman", "brosina.hoffman@superstore.com", "Canada", "Gold"),
+            ("Andrew Allen", "andrew.allen@superstore.com", "United Kingdom", "Silver"),
+            ("Irene Maddox", "irene.maddox@superstore.com", "Germany", "Gold"),
+            ("Harold Pawlan", "harold.pawlan@superstore.com", "France", "Bronze"),
+            ("Pete Kious", "pete.kious@superstore.com", "Australia", "Platinum")
+        ]
+        backup_stores = [
+            ("Superstore Hub - Los Angeles", "Los Angeles", "CA", "United States"),
+            ("Superstore Hub - Toronto", "Toronto", "ON", "Canada"),
+            ("Superstore Hub - London", "London", "Greater London", "United Kingdom"),
+            ("Superstore Hub - Berlin", "Berlin", "Berlin", "Germany"),
+            ("Superstore Hub - Paris", "Paris", "Île-de-France", "France"),
+            ("Superstore Hub - Sydney", "Sydney", "NSW", "Australia")
+        ]
+        return backup_customers, backup_stores
+
+def setup_supabase_db(customers, stores):
     """Initializes customer and store tables in Cloud PostgreSQL (Supabase)."""
     print("==================================================")
     print("INITIALIZING SUPABASE ONLINE DATABASE SOURCE (CLOUD OLTP)")
@@ -105,15 +126,15 @@ def setup_supabase_db(customers):
             );
         """)
 
-        print(f" -> Ingesting {len(customers)} real customer profiles into Supabase Cloud DB...")
+        print(f" -> Ingesting {len(customers)} Kaggle customer records into Supabase Cloud DB...")
         for name, email, country, tier in customers:
             cursor.execute("""
                 INSERT INTO customers (customer_name, email, country, membership_tier)
                 VALUES (%s, %s, %s, %s)
             """, (name, email, country, tier))
 
-        print(f" -> Ingesting {len(REAL_STORE_PROFILES)} real store branch profiles into Supabase...")
-        for name, city, state, country in REAL_STORE_PROFILES:
+        print(f" -> Ingesting {len(stores)} Kaggle store locations into Supabase...")
+        for name, city, state, country in stores:
             cursor.execute("""
                 INSERT INTO stores (store_name, city, state, country)
                 VALUES (%s, %s, %s, %s)
@@ -122,7 +143,7 @@ def setup_supabase_db(customers):
         conn.commit()
         cursor.execute("SELECT COUNT(*) FROM customers;")
         count = cursor.fetchone()[0]
-        print(f" -> Success! Ingested {count} real customer profiles into Supabase Cloud DB.\n")
+        print(f" -> Success! Ingested {count} Kaggle customer profiles into Supabase Cloud DB.\n")
         cursor.close()
         conn.close()
         return True
@@ -132,14 +153,14 @@ def setup_supabase_db(customers):
         print("Falling back to local SQLite OLTP database...\n")
         return False
 
-def setup_local_sqlite_oltp(customers=None):
+def setup_local_sqlite_oltp(customers=None, stores=None):
     """Initializes customer and store tables in local SQLite OLTP database."""
     print("==================================================")
-    print("INITIALIZING REAL-WORLD OLTP DATABASE (LOCAL SQLITE SOURCE)")
+    print("INITIALIZING KAGGLE SUPERSTORE OLTP DATABASE (LOCAL SQLITE SOURCE)")
     print("==================================================\n")
     
-    if customers is None:
-        customers = fetch_real_customer_dataset()
+    if customers is None or stores is None:
+        customers, stores = fetch_kaggle_superstore_dataset()
 
     conn = sqlite3.connect(LOCAL_OLTP_DATABASE)
     cursor = conn.cursor()
@@ -167,15 +188,15 @@ def setup_local_sqlite_oltp(customers=None):
         );
     """)
 
-    print(f" -> Ingesting {len(customers)} real customer profiles into local OLTP database...")
+    print(f" -> Ingesting {len(customers)} Kaggle customer profiles into local OLTP database...")
     for name, email, country, tier in customers:
         cursor.execute("""
             INSERT INTO customers (customer_name, email, country, membership_tier)
             VALUES (?, ?, ?, ?)
         """, (name, email, country, tier))
 
-    print(f" -> Ingesting {len(REAL_STORE_PROFILES)} real store branch profiles into local OLTP database...")
-    for name, city, state, country in REAL_STORE_PROFILES:
+    print(f" -> Ingesting {len(stores)} Kaggle store outlet locations into local OLTP database...")
+    for name, city, state, country in stores:
         cursor.execute("""
             INSERT INTO stores (store_name, city, state, country)
             VALUES (?, ?, ?, ?)
@@ -184,19 +205,19 @@ def setup_local_sqlite_oltp(customers=None):
     conn.commit()
     cursor.execute("SELECT COUNT(*) FROM customers;")
     count = cursor.fetchone()[0]
-    print(f" -> Success! Configured {count} real customer profiles in local SQLite ({LOCAL_OLTP_DATABASE}).\n")
+    print(f" -> Success! Configured {count} Kaggle customer profiles in local SQLite ({LOCAL_OLTP_DATABASE}).\n")
     cursor.close()
     conn.close()
 
 def main():
-    customers = fetch_real_customer_dataset()
+    customers, stores = fetch_kaggle_superstore_dataset()
     if is_supabase_configured():
-        success = setup_supabase_db(customers)
+        success = setup_supabase_db(customers, stores)
         if not success:
-            setup_local_sqlite_oltp(customers)
+            setup_local_sqlite_oltp(customers, stores)
     else:
         print("[INFO] Supabase credentials not set or using placeholder URI.")
-        setup_local_sqlite_oltp(customers)
+        setup_local_sqlite_oltp(customers, stores)
 
 if __name__ == "__main__":
     main()
