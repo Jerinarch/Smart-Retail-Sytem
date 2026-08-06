@@ -125,7 +125,6 @@ def check_dwh_exists():
     return os.path.exists(DWH_DATABASE)
 
 # Sidebar Navigation
-st.sidebar.markdown("<div style='margin-bottom:12px;'><span class='status-badge'>Cognizant Track 1 — Problem 1</span></div>", unsafe_allow_html=True)
 st.sidebar.markdown("<h2 style='font-size:1.3rem; font-weight:700; color:#ffffff; margin-bottom:20px;'>Smart Retail DWH</h2>", unsafe_allow_html=True)
 
 navigation = st.sidebar.radio(
@@ -137,17 +136,6 @@ navigation = st.sidebar.radio(
         "ETL Control Center"
     ]
 )
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("""
-<div style='font-size:0.85rem; color:#94a3b8; line-height:1.5;'>
-<b>Architecture Highlights</b><br/>
-• Multi-Source Ingestion<br/>
-• Medallion ETL Pipeline<br/>
-• Star Schema DW Engine<br/>
-• Read-Only SQL Security
-</div>
-""", unsafe_allow_html=True)
 
 # Header Bar
 st.markdown("<div class='app-title'>Smart Retail Data Warehouse Platform</div>", unsafe_allow_html=True)
