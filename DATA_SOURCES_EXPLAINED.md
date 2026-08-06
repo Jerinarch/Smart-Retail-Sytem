@@ -48,13 +48,31 @@ Below is the complete architectural breakdown of the 3 data sources used in this
 
 ## 🛢️ 3. Registered Customers & Store Profiles (Operational OLTP Database)
 
-* **Source Location**:
-  * **Cloud Mode**: Supabase Cloud PostgreSQL (`postgresql://postgres:...@db.supabase.co:5432/postgres`)
-  * **Local Fallback Mode**: `local_oltp.db` (Local Relational SQLite DB)
-* **Format**: Relational SQL Database (`customers` & `stores` 3NF tables)
-* **Authentication / API Key**: Managed via connection string or local database file.
-* **Details**:
-  * `setup_sources.py` automatically initializes and seeds 11 registered international customer profiles (`John Doe`, `Jane Smith`, `Arjun Mehta`, `Sophie Dubois`, `Yuki Tanaka`, etc.) across 6 countries (`United States`, `Canada`, `India`, `France`, `Germany`, `United Kingdom`) with loyalty tiers (`Gold`, `Silver`, `Bronze`).
+### 📌 Is this data from your Supabase Account or Local Fallback?
+Currently, the pipeline supports **Dual Mode**:
+
+* **Current Active Mode (Local Fallback)**:
+  Because no Supabase URI password was set in `.env`, `setup_sources.py` ran in **Local Fallback Mode**. It generated a local relational SQLite database (`local_oltp.db`) containing 11 realistic customer profiles (`John Doe`, `Jane Smith`, `Arjun Mehta`, `Sophie Dubois`, `Yuki Tanaka`, etc.) across 6 countries (`United States`, `Canada`, `India`, `France`, `Germany`, `United Kingdom`) with loyalty tiers (`Gold`, `Silver`, `Bronze`) and 6 retail store branches.
+
+* **Cloud Mode (Connecting Your Live Supabase Account)**:
+  If you want the pipeline to connect to **your real Supabase PostgreSQL cloud database** (matching your CIA-1 project), simply update your `.env` file!
+
+### 🔑 How to Connect Your Real Supabase Account:
+
+1. Open your `.env` file in the project root.
+2. Replace the `SUPABASE_CONN_STRING` placeholder with your actual Supabase connection URI:
+   ```env
+   SUPABASE_CONN_STRING=postgresql://postgres.[YOUR-PROJECT-REF]:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF].supabase.co:5432/postgres
+   ```
+3. Run the setup and ETL commands:
+   ```bash
+   # Populates tables directly inside your Supabase Cloud PostgreSQL database
+   python setup_sources.py
+
+   # Extracts live from your Supabase PostgreSQL cloud database into the Data Warehouse
+   python etl_pipeline.py
+   ```
+
 * **Extracted Attributes**:
   * `customer_id`, `customer_name`, `email`, `country`, `membership_tier`
   * `store_id`, `store_name`, `city`, `state`, `country`
