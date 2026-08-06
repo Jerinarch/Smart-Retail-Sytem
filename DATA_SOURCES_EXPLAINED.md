@@ -12,7 +12,60 @@ In production and data engineering hackathons, data is ingested from three prima
 2. **Public Data Repositories**: Raw HTTP content hosted on GitHub or open data portals.
 3. **Operational OLTP Relational Databases**: Seeded locally or hosted on cloud Postgres platforms (Supabase).
 
-Below is the complete architectural breakdown of the 3 data sources used in this project.
+Below is the complete architectural flowchart illustrating how data flows from the 3 decentralized raw sources through the Medallion ETL pipeline, into the Star Schema Data Warehouse, and onto the Streamlit & GenAI layer.
+
+---
+
+## 🗺️ Complete End-to-End System Architecture Flowchart
+
+```mermaid
+flowchart TD
+    subgraph S ["1. Decentralized Multi-Source Ingestion (Raw Layer)"]
+        direction TB
+        S1["🌐 Live Product Catalog REST API<br/>FakeStore API<br/>(20 Live Items, Categories & Prices)"]
+        S2["📁 Historical Sales Ledger<br/>Public GitHub CSV Repository<br/>(113,036 Real Order Ledger Records)"]
+        S3["🛢️ Customer & Store OLTP Registry<br/>Kaggle Superstore / Supabase Cloud DB<br/>(2,702 Customers & 50 Store Outlets)"]
+    end
+
+    subgraph ETL ["2. Python Medallion Pipeline (etl_pipeline.py)"]
+        direction TB
+        B["🥉 BRONZE LAYER (Raw Extraction)<br/>• HTTP GET API Requests (requests.get)<br/>• Pandas CSV Streaming (pd.read_csv)<br/>• SQL Queries (psycopg2 / sqlite3)"]
+        
+        Si["🥈 SILVER LAYER (Data Cleaning & Key Conformation)<br/>• Title String Hashing: (hash(Product_Name) % 20) + 1<br/>• Customer Country Matching & Deduplication<br/>• Date Parsing: Day, Month, Year, Quarter, Day of Week"]
+        
+        G["🥇 GOLD LAYER (Data Warehouse Load)<br/>• Star Schema Table Creation (DDL SQL)<br/>• Foreign Key Enforcement (PRAGMA foreign_keys = ON)<br/>• Fact Financial Metrics: Revenue & Gross Profit"]
+        
+        B -->|Extract| Si -->|Conform & Transform| G
+    end
+
+    subgraph DW ["3. Data Warehouse Star Schema (data_warehouse.db)"]
+        direction TB
+        FACT["📊 Central Fact Table:<br/>Fact_Sales (113,036 Order Facts)"]
+        DIM1["👤 Dim_Customers<br/>(2,702 Registered Profiles)"]
+        DIM2["🛍️ Dim_Products<br/>(20 Catalog Items)"]
+        DIM3["🏬 Dim_Stores<br/>(50 Global Retail Branches)"]
+        DIM4["📅 Dim_Time<br/>(Calendar Dimension Table)"]
+        
+        FACT <-->|FK: customer_key| DIM1
+        FACT <-->|FK: product_key| DIM2
+        FACT <-->|FK: store_key| DIM3
+        FACT <-->|FK: time_key| DIM4
+    end
+
+    subgraph UI ["4. Interactive Presentation & Intelligence Layer"]
+        direction TB
+        DASH["📊 Streamlit BI Web Dashboard (app.py)<br/>• Executive KPI Summary Cards<br/>• Interactive Plotly Revenue Line Charts<br/>• Global Store Revenue Maps & Heatmaps<br/>• Inventory Stock Reorder Alert System"]
+        AI["🤖 GenAI NL-to-SQL Assistant (genai_assistant.py)<br/>• Natural Language Prompt Parsing<br/>• Automated SQL Query Generation<br/>• Dynamic Result Tables & Auto-Plotting"]
+    end
+
+    S1 -->|JSON HTTP| B
+    S2 -->|CSV Stream| B
+    S3 -->|SQL / DataFrame| B
+    G -->|Load Star Schema| DW
+    DW <-->|Analytical Queries| DASH
+    DW <-->|SQL Queries| AI
+    AI <-->|Auto Charts & SQL Data| DASH
+```
 
 ---
 
