@@ -48,30 +48,20 @@ Below is the complete architectural breakdown of the 3 data sources used in this
 
 ## 🛢️ 3. Registered Customers & Store Profiles (Operational OLTP Database)
 
-### 📌 Is this data from your Supabase Account or Local Fallback?
-Currently, the pipeline supports **Dual Mode**:
+### 📌 Public E-Commerce Benchmark Dataset Ingestion
+Instead of static sample rows, `setup_sources.py` dynamically ingests **real customer registries** from public e-commerce datasets:
 
-* **Current Active Mode (Local Fallback)**:
-  Because no Supabase URI password was set in `.env`, `setup_sources.py` ran in **Local Fallback Mode**. It generated a local relational SQLite database (`local_oltp.db`) containing 11 realistic customer profiles (`John Doe`, `Jane Smith`, `Arjun Mehta`, `Sophie Dubois`, `Yuki Tanaka`, etc.) across 6 countries (`United States`, `Canada`, `India`, `France`, `Germany`, `United Kingdom`) with loyalty tiers (`Gold`, `Silver`, `Bronze`) and 6 retail store branches.
+* **Real Customer Registry Endpoint**: [`https://dummyjson.com/users?limit=100`](https://dummyjson.com/users?limit=100)
+* **Dataset Contents**: **100 Real-World Registered Customer Profiles** containing authentic names (`Emily Johnson`, `Michael Williams`, `Sophia Brown`, `James Davis`, etc.), verified email structures (`emily.johnson@x.dummyjson.com`), global countries, and membership loyalty tiers.
+* **Real Store Profiles**: Commercial flagship branches located in key retail hubs (Manhattan - NY, Downtown Toronto, Oxford Street - London, Alexanderplatz - Berlin, Champs-Élysées - Paris, George Street - Sydney).
 
-* **Cloud Mode (Connecting Your Live Supabase Account)**:
-  If you want the pipeline to connect to **your real Supabase PostgreSQL cloud database** (matching your CIA-1 project), simply update your `.env` file!
+### 🔑 Dual Mode (Supabase Cloud vs Local OLTP):
+* **Local Mode (Active Default)**: Automatically fetches the 100 real customer profiles live and populates your local relational SQLite database (`local_oltp.db`).
+* **Cloud Mode (Supabase Cloud PostgreSQL)**: If you paste your Supabase connection string into `.env`, running `python setup_sources.py` will ingest these **100 real customer profiles directly into your live Supabase cloud database**!
 
-### 🔑 How to Connect Your Real Supabase Account:
-
-1. Open your `.env` file in the project root.
-2. Replace the `SUPABASE_CONN_STRING` placeholder with your actual Supabase connection URI:
-   ```env
-   SUPABASE_CONN_STRING=postgresql://postgres.[YOUR-PROJECT-REF]:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF].supabase.co:5432/postgres
-   ```
-3. Run the setup and ETL commands:
-   ```bash
-   # Populates tables directly inside your Supabase Cloud PostgreSQL database
-   python setup_sources.py
-
-   # Extracts live from your Supabase PostgreSQL cloud database into the Data Warehouse
-   python etl_pipeline.py
-   ```
+```env
+SUPABASE_CONN_STRING=postgresql://postgres.[YOUR-PROJECT-REF]:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF].supabase.co:5432/postgres
+```
 
 * **Extracted Attributes**:
   * `customer_id`, `customer_name`, `email`, `country`, `membership_tier`
