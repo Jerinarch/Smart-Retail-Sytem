@@ -167,21 +167,41 @@ Open your browser at `http://localhost:8501`.
 
 ---
 
-## 🧪 5. Running Automated Tests
+## 🛡️ 5. Enterprise Data Architecture & Security Standards
 
-Verify pipeline transformation and schema integrity:
+This project follows enterprise data governance, high-performance OLAP optimization, and zero-trust security standards.
+
+### Core Architectural Highlights:
+1. **Deterministic Cryptographic Key Hashing (MD5)**: `Dim_Products` surrogate key derivation using stable cryptographic hashing (`hashlib.md5`) ensures idempotent, seed-stable key assignment across incremental loads.
+2. **B-Tree Indexing Engine**: Secondary B-Tree indexes on `Fact_Sales(customer_key)`, `Fact_Sales(product_key)`, `Fact_Sales(store_key)`, and `Fact_Sales(time_key)` accelerate analytical multi-dimensional OLAP `JOIN` queries.
+3. **Read-Only GenAI SQL Guardrails**: Natural language to SQL execution engine implements security guardrails blocking destructive commands (`DROP`, `DELETE`, `UPDATE`, `INSERT`, `ALTER`, `TRUNCATE`).
+4. **Streamlit RAM Query Caching**: High-throughput analytics dashboard leverages `@st.cache_data` memory caching with 300-second TTL invalidation.
+5. **Kaggle Superstore Integration**: 1,000 realistic enterprise customer records and 20 multi-region physical store profiles ingested from e-commerce datasets.
+
+### 📚 Detailed Documentation & Checklists:
+- 📖 [**Data Sources Architecture & Flowchart**](DATA_SOURCES_EXPLAINED.md): Detailed lineage of cloud Postgres, REST API, and raw CSV ingestion workflows.
+- 🛡️ [**Enterprise Data Architecture Quality Checklist**](DATA_ARCHITECTURE_QUALITY_CHECKLIST.md): 100% compliant quality benchmarks, ACID safety rules, PII sanitization, and Tech Stack Evaluation Matrix.
+
+---
+
+## 🧪 6. Running Automated Tests
+
+Verify pipeline transformation, referential integrity, and schema compliance:
 ```bash
 pytest tests/
 ```
 
 ---
 
-## 👥 6. Hackathon Deliverables Checklist
+## 👥 7. Hackathon Deliverables Checklist
 - [x] Operational OLTP Database Schema (`setup_sources.py`)
 - [x] Multi-Source Extraction & Medallion ETL Workflow (`etl_pipeline.py`)
 - [x] Star Schema Analytical Data Warehouse (`data_warehouse.db`)
 - [x] Interactive Streamlit Business Intelligence Dashboard (`app.py`)
 - [x] Generative AI Natural Language to SQL Assistant (`genai_assistant.py`)
+- [x] Enterprise Quality & Governance Audit Checklist (`DATA_ARCHITECTURE_QUALITY_CHECKLIST.md`)
+- [x] Data Lineage & Source Architecture Guide (`DATA_SOURCES_EXPLAINED.md`)
 - [x] Unit Test Suite & Documentation (`tests/test_etl.py` & `README.md`)
 
 ---
+
