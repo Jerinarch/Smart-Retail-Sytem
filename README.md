@@ -26,37 +26,55 @@ Retail operations generate massive streams of transactional, catalog, and store 
 
 ```mermaid
 flowchart TD
-    subgraph Sources ["1. Data Sources (Raw Layer)"]
-        S1["☁️ Supabase Cloud Postgres<br/>(Customers & Loyalty Profiles)"]
-        S2["🌐 REST API Catalog<br/>(Live Inventory & Prices)"]
-        S3["📁 GitHub CSV Repository<br/>(Historical Store Transactions)"]
+    subgraph Sources ["1. Multi-Source Ingestion (Raw Layer)"]
+        direction TB
+        S1["☁️ Supabase Cloud / Kaggle OLTP<br/>(2,702 Customer Profiles & 50 Store Outlets)"]
+        S2["🌐 Live REST API Catalog<br/>FakeStore API<br/>(20 Live Catalog Items & Inventory Prices)"]
+        S3["📁 GitHub CSV Data Lake<br/>(113,036 Historical Order Ledger Records)"]
+        S4["📦 Self-Healing Offline Engine<br/>(Automatic Fallback Catalog on Network Drops)"]
     end
 
-    subgraph ETL ["2. Python ETL Engine (Medallion Pipeline)"]
-        B["🥉 Bronze Layer<br/>Raw JSON / CSV / SQL Dumps"]
-        Si["🥈 Silver Layer<br/>Cleaned, Hash-Mapped, Deduplicated & Conformed Data"]
-        G["🥇 Gold Layer<br/>Data Warehouse Star Schema Cube"]
+    subgraph ETL ["2. Python Medallion Pipeline (etl_pipeline.py)"]
+        direction TB
+        B["🥉 BRONZE LAYER (Raw Extraction)<br/>• HTTP GET Requests (requests.get)<br/>• Pandas Streaming (pd.read_csv)<br/>• SQL Queries (sqlite3 / psycopg2)"]
         
-        S1 --> B
-        S2 --> B
-        S3 --> B
-        B -->|Extraction| Si
-        Si -->|Conformed Joins & Facts| G
+        Si["🥈 SILVER LAYER (Cleaning & Key Conformation)<br/>• Deterministic MD5 Key Hashing (hashlib.md5)<br/>• Customer Country Matching & Deduplication<br/>• Time Parsing: Day, Month, Year, Quarter, Day of Week"]
+        
+        G["🥇 GOLD LAYER (Data Warehouse Load)<br/>• Star Schema Table Creation (DDL SQL)<br/>• Foreign Key Integrity (PRAGMA foreign_keys = ON)<br/>• Fact Derivations: Total Revenue & Profit"]
+        
+        B -->|Extract| Si -->|Conform & Transform| G
     end
 
-    subgraph Target ["3. Data Warehouse (OLAP Target)"]
-        DW[("🛢️ SQLite / DuckDB Data Warehouse<br/>(data_warehouse.db)")]
-        G --> DW
+    subgraph Target ["3. Data Warehouse Star Schema (data_warehouse.db)"]
+        direction TB
+        FACT["📊 Central Fact Table:<br/>Fact_Sales (113,036 Order Facts)"]
+        DIM1["👤 Dim_Customers (2,702 Profiles)"]
+        DIM2["🛍️ Dim_Products (20 Catalog Items)"]
+        DIM3["🏬 Dim_Stores (50 Retail Branches)"]
+        DIM4["📅 Dim_Time (Calendar Dimension)"]
+        IDX["⚡ B-Tree Index Engine<br/>(idx_fact_sales_customer / product / store / time)"]
+        
+        FACT <-->|FK: customer_key| DIM1
+        FACT <-->|FK: product_key| DIM2
+        FACT <-->|FK: store_key| DIM3
+        FACT <-->|FK: time_key| DIM4
+        FACT --- IDX
     end
 
     subgraph Visual ["4. Presentation & BI Layer"]
-        ST["📊 Streamlit Web Application<br/>(Real-Time Analytics Dashboard)"]
-        AI["🤖 GenAI NL-to-SQL Assistant<br/>(Natural Language Query Agent)"]
-        
-        DW <--> ST
-        DW <--> AI
-        AI <--> ST
+        direction TB
+        ST["📊 Streamlit BI Web App (app.py)<br/>• Real-Time KPI Cards & Plotly Line Charts<br/>• Store Revenue Heatmaps & Reorder Alerts<br/>• RAM Query Caching (@st.cache_data 300s TTL)"]
+        AI["🤖 GenAI NL-to-SQL Assistant (genai_assistant.py)<br/>• Schema Prompt Grounding<br/>• Read-Only SQL Guardrails (is_safe_sql)<br/>• Automated SQL Query Execution & Charts"]
     end
+
+    S1 -->|SQL / DataFrame| B
+    S2 -->|JSON HTTP| B
+    S3 -->|CSV Stream| B
+    S4 -->|Fallback Catalog| B
+    G -->|Load Star Schema| Target
+    Target <-->|Analytical Queries| ST
+    Target <-->|SQL Queries| AI
+    AI <-->|Auto Plotting & Tables| ST
 ```
 
 ---

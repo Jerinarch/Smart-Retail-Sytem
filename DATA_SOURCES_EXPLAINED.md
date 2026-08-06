@@ -22,16 +22,17 @@ Below is the complete architectural flowchart illustrating how data flows from t
 flowchart TD
     subgraph S ["1. Decentralized Multi-Source Ingestion (Raw Layer)"]
         direction TB
-        S1["🌐 Live Product Catalog REST API<br/>FakeStore API<br/>(20 Live Items, Categories & Prices)"]
+        S1["🌐 Live Product Catalog REST API<br/>FakeStore API<br/>(20 Live Catalog Items & Prices)"]
         S2["📁 Historical Sales Ledger<br/>Public GitHub CSV Repository<br/>(113,036 Real Order Ledger Records)"]
         S3["🛢️ Customer & Store OLTP Registry<br/>Kaggle Superstore / Supabase Cloud DB<br/>(2,702 Customers & 50 Store Outlets)"]
+        S4["📦 Self-Healing Offline Engine<br/>(Automatic Fallback Catalog on Network Drops)"]
     end
 
     subgraph ETL ["2. Python Medallion Pipeline (etl_pipeline.py)"]
         direction TB
-        B["🥉 BRONZE LAYER (Raw Extraction)<br/>• HTTP GET API Requests (requests.get)<br/>• Pandas CSV Streaming (pd.read_csv)<br/>• SQL Queries (psycopg2 / sqlite3)"]
+        B["🥉 BRONZE LAYER (Raw Extraction)<br/>• HTTP GET API Requests (requests.get)<br/>• Pandas CSV Streaming (pd.read_csv)<br/>• SQL Queries (sqlite3 / psycopg2)"]
         
-        Si["🥈 SILVER LAYER (Data Cleaning & Key Conformation)<br/>• Title String Hashing: (hash(Product_Name) % 20) + 1<br/>• Customer Country Matching & Deduplication<br/>• Date Parsing: Day, Month, Year, Quarter, Day of Week"]
+        Si["🥈 SILVER LAYER (Data Cleaning & Key Conformation)<br/>• Deterministic Product Key Hashing: MD5 Hashing (hashlib.md5)<br/>• Customer Country Matching & Deduplication<br/>• Time Parsing: Day, Month, Year, Quarter, Day of Week"]
         
         G["🥇 GOLD LAYER (Data Warehouse Load)<br/>• Star Schema Table Creation (DDL SQL)<br/>• Foreign Key Enforcement (PRAGMA foreign_keys = ON)<br/>• Fact Financial Metrics: Revenue & Gross Profit"]
         
@@ -45,22 +46,25 @@ flowchart TD
         DIM2["🛍️ Dim_Products<br/>(20 Catalog Items)"]
         DIM3["🏬 Dim_Stores<br/>(50 Global Retail Branches)"]
         DIM4["📅 Dim_Time<br/>(Calendar Dimension Table)"]
+        IDX["⚡ B-Tree Index Engine<br/>(idx_fact_sales_customer / product / store / time)"]
         
         FACT <-->|FK: customer_key| DIM1
         FACT <-->|FK: product_key| DIM2
         FACT <-->|FK: store_key| DIM3
         FACT <-->|FK: time_key| DIM4
+        FACT --- IDX
     end
 
     subgraph UI ["4. Interactive Presentation & Intelligence Layer"]
         direction TB
-        DASH["📊 Streamlit BI Web Dashboard (app.py)<br/>• Executive KPI Summary Cards<br/>• Interactive Plotly Revenue Line Charts<br/>• Global Store Revenue Maps & Heatmaps<br/>• Inventory Stock Reorder Alert System"]
-        AI["🤖 GenAI NL-to-SQL Assistant (genai_assistant.py)<br/>• Natural Language Prompt Parsing<br/>• Automated SQL Query Generation<br/>• Dynamic Result Tables & Auto-Plotting"]
+        DASH["📊 Streamlit BI Web Dashboard (app.py)<br/>• Executive KPI Summary Cards<br/>• Interactive Plotly Revenue Line Charts<br/>• Store Performance Heatmaps & Stock Alerts<br/>• RAM Query Caching (@st.cache_data 300s TTL)"]
+        AI["🤖 GenAI NL-to-SQL Assistant (genai_assistant.py)<br/>• Schema Prompt Grounding<br/>• Read-Only SQL Guardrails (is_safe_sql)<br/>• Automated SQL Query Execution & Charts"]
     end
 
     S1 -->|JSON HTTP| B
     S2 -->|CSV Stream| B
     S3 -->|SQL / DataFrame| B
+    S4 -->|Fallback Catalog| B
     G -->|Load Star Schema| DW
     DW <-->|Analytical Queries| DASH
     DW <-->|SQL Queries| AI
