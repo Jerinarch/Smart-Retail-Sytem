@@ -95,6 +95,7 @@ if not check_dwh_exists():
     st.warning("⚠️ Data Warehouse not found. Triggering initial ETL pipeline run...")
     with st.spinner("Extracting multi-source data and building Star Schema..."):
         run_etl()
+        st.cache_data.clear()
     st.success("✅ Data Warehouse ready!")
     st.rerun()
 
@@ -283,11 +284,17 @@ elif navigation == "🗄️ Data Warehouse Explorer":
     st.subheader("⚡ Custom SQL Query Sandbox")
     custom_sql = st.text_area("Write SQL Query:", value="SELECT * FROM Fact_Sales f JOIN Dim_Products p ON f.product_key = p.product_key LIMIT 10;")
     if st.button("Run SQL"):
-        try:
-            df_custom = pd.read_sql_query(custom_sql, conn)
-            st.dataframe(df_custom, use_container_width=True)
-        except Exception as e:
-            st.error(f"Error executing query: {e}")
+        # Security Guardrail Check for Custom SQL Sandbox
+        from genai_assistant import is_safe_sql
+        is_safe, err_msg = is_safe_sql(custom_sql)
+        if not is_safe:
+            st.error(f"❌ {err_msg}")
+        else:
+            try:
+                df_custom = pd.read_sql_query(custom_sql, conn)
+                st.dataframe(df_custom, use_container_width=True)
+            except Exception as e:
+                st.error(f"Error executing query: {e}")
     conn.close()
 
 # ---------------------------------------------------------
@@ -300,5 +307,6 @@ elif navigation == "🔄 ETL Pipeline Control":
     if st.button("▶️ Run Complete ETL Pipeline", type="primary"):
         with st.spinner("Running Medallion ETL Engine..."):
             run_etl()
+            st.cache_data.clear()
         st.success("✅ ETL Pipeline completed! Star Schema refreshed.")
         st.balloons()

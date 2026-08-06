@@ -2,6 +2,7 @@ import sqlite3
 import psycopg2
 import pandas as pd
 import requests
+import hashlib
 import urllib3
 import ssl
 import sys
@@ -21,6 +22,14 @@ try:
     ssl._create_default_https_context = ssl._create_unverified_context
 except AttributeError:
     pass
+
+def get_deterministic_product_key(name: str, max_keys: int) -> int:
+    """Computes a 100% deterministic product key using MD5 cryptographic hashing."""
+    if max_keys <= 0:
+        return 1
+    raw_hash = hashlib.md5(str(name).encode("utf-8")).hexdigest()
+    hash_int = int(raw_hash, 16)
+    return (hash_int % max_keys) + 1
 
 def extract_customers_and_stores():
     """Extracts customer and store records from Supabase Postgres or local SQLite."""
@@ -122,9 +131,9 @@ def run_etl():
     # A. Dim_Customers Transformation
     df_customers = df_customers_raw.copy()
     df_customers = df_customers.drop_duplicates(subset=["customer_id"])
-    df_customers["customer_name"] = df_customers["customer_name"].str.strip().str.title()
-    df_customers["email"] = df_customers["email"].str.strip().str.lower()
-    df_customers["country"] = df_customers["country"].str.strip().str.title()
+    df_customers["customer_name"] = df_customers["customer_name"].astype(str).str.strip().str.title()
+    df_customers["email"] = df_customers["email"].astype(str).str.strip().str.lower()
+    df_customers["country"] = df_customers["country"].astype(str).str.strip().str.title()
     df_customers = df_customers.rename(columns={"customer_id": "customer_key"})
     df_customers = df_customers[["customer_key", "customer_name", "email", "country", "membership_tier"]]
     print(" -> Transformed Dimension: Dim_Customers")
@@ -177,16 +186,18 @@ def run_etl():
     country_to_customer = df_customers.drop_duplicates(subset=["country"]).set_index("country")["customer_key"].to_dict()
     df_sales["customer_key"] = df_sales["Country"].astype(str).str.strip().str.title().map(country_to_customer)
     
-    # 2. Hash product name to deterministically map to API products (1 to len(df_products))
+    # 2. Cryptographic MD5 Hash mapping for deterministic product key conformation across sessions
     num_products = max(len(df_products), 1)
-    df_sales["product_key"] = df_sales["Product"].apply(lambda name: (abs(hash(str(name))) % num_products) + 1)
+    df_sales["product_key"] = df_sales["Product"].apply(
+        lambda name: get_deterministic_product_key(name, num_products)
+    )
     
     # 3. Map Country to Store Key
     country_to_store = df_stores.drop_duplicates(subset=["country"]).set_index("country")["store_key"].to_dict()
     df_sales["store_key"] = df_sales["Country"].astype(str).str.strip().str.title().map(country_to_store)
     df_sales["store_key"] = df_sales["store_key"].fillna(1).astype(int)
 
-    # 4. Form Time Key and Metrics
+    # 4. Form Time Key and Financial Metrics
     df_sales["time_key"] = df_sales["parsed_date"].dt.strftime("%Y-%m-%d")
     df_sales = df_sales.rename(columns={
         "Order_Quantity": "quantity",
@@ -199,7 +210,7 @@ def run_etl():
     
     # Financial facts calculation
     df_sales["total_revenue"] = (df_sales["quantity"] * df_sales["unit_price"]).round(2)
-    df_sales["total_profit"] = (df_sales["total_revenue"] * 0.35).round(2) # 35% average gross margin
+    df_sales["total_profit"] = (df_sales["total_revenue"] * 0.35).round(2)
     
     # Transaction ID generation
     df_sales["transaction_id"] = [f"TXN{i:06d}" for i in range(1, len(df_sales) + 1)]
@@ -309,6 +320,15 @@ def run_etl():
 
     print(" -> Loading Fact_Sales...")
     df_sales.to_sql("Fact_Sales", conn_dwh, if_exists="append", index=False)
+
+    # -------------------------------------------------
+    # UPGRADE: EXPLICIT B-TREE INDEXING ON FOREIGN KEYS
+    # -------------------------------------------------
+    print(" -> Creating high-performance Foreign Key B-Tree indexes on Fact_Sales...")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_fact_sales_customer ON Fact_Sales(customer_key);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_fact_sales_product ON Fact_Sales(product_key);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_fact_sales_store ON Fact_Sales(store_key);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_fact_sales_time ON Fact_Sales(time_key);")
 
     conn_dwh.commit()
     conn_dwh.close()

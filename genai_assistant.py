@@ -13,6 +13,22 @@ Database Schema (SQLite Data Warehouse Star Schema):
 5. Fact_Sales (sales_key INTEGER PK, transaction_id TEXT, customer_key FK, product_key FK, store_key FK, time_key FK, quantity INTEGER, unit_price REAL, total_revenue REAL, total_profit REAL)
 """
 
+FORBIDDEN_KEYWORDS = ["DROP", "DELETE", "UPDATE", "INSERT", "ALTER", "TRUNCATE", "REPLACE", "CREATE", "GRANT", "PRAGMA"]
+
+def is_safe_sql(sql_query: str) -> tuple[bool, str]:
+    """Inspects SQL query to ensure it is strictly a READ-ONLY SELECT query."""
+    upper_sql = sql_query.upper().strip()
+    
+    # Check for forbidden destructive keywords
+    for kw in FORBIDDEN_KEYWORDS:
+        if re.search(r"\b" + kw + r"\b", upper_sql):
+            return False, f"Destructive SQL Operation Blocked: Contains forbidden keyword '{kw}'."
+            
+    if not upper_sql.startswith("SELECT") and not upper_sql.startswith("WITH"):
+        return False, "Security Guardrail Blocked: Only SELECT or WITH read-only queries are permitted."
+        
+    return True, ""
+
 def generate_sql_heuristic(nl_prompt: str) -> str:
     """Fallback keyword-based natural language to SQL translator."""
     prompt_lower = nl_prompt.lower()
@@ -89,12 +105,20 @@ def generate_sql_with_llm(nl_prompt: str) -> str:
         return generate_sql_heuristic(nl_prompt)
 
 def execute_nl_query(nl_prompt: str):
-    """Parses NL prompt, converts to SQL, executes against data warehouse, and returns DataFrame."""
+    """Parses NL prompt, converts to SQL, validates read-only security, and executes query."""
     sql_query = generate_sql_with_llm(nl_prompt)
-    
-    # Clean SQL string
     sql_clean = re.sub(r"```sql|```", "", sql_query).strip()
     
+    # Security Validation Guardrail
+    is_safe, error_msg = is_safe_sql(sql_clean)
+    if not is_safe:
+        return {
+            "success": False,
+            "sql": sql_clean,
+            "data": pd.DataFrame(),
+            "error": error_msg
+        }
+        
     try:
         conn = sqlite3.connect(DWH_DATABASE)
         df_result = pd.read_sql_query(sql_clean, conn)

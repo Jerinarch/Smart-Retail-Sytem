@@ -2,10 +2,18 @@ import sqlite3
 import pandas as pd
 from config import DWH_DATABASE
 
+try:
+    import streamlit as st
+    cache_decorator = st.cache_data(ttl=300)
+except ImportError:
+    def cache_decorator(func):
+        return func
+
 def get_connection():
     """Returns a connection to the SQLite Data Warehouse."""
     return sqlite3.connect(DWH_DATABASE)
 
+@cache_decorator
 def query_sales_by_category():
     """Query 1: Sales Performance & Profitability by Product Category."""
     query = """
@@ -24,6 +32,7 @@ def query_sales_by_category():
     with get_connection() as conn:
         return pd.read_sql_query(query, conn)
 
+@cache_decorator
 def query_top_customers(limit=5):
     """Query 2: Top Customers by Spend & Loyalty Tier."""
     query = f"""
@@ -42,6 +51,7 @@ def query_top_customers(limit=5):
     with get_connection() as conn:
         return pd.read_sql_query(query, conn)
 
+@cache_decorator
 def query_monthly_sales_trend():
     """Query 3: Monthly Sales & Profit Trend."""
     query = """
@@ -59,6 +69,7 @@ def query_monthly_sales_trend():
     with get_connection() as conn:
         return pd.read_sql_query(query, conn)
 
+@cache_decorator
 def query_revenue_by_country():
     """Query 4: Revenue & Orders by Country."""
     query = """
@@ -76,6 +87,7 @@ def query_revenue_by_country():
     with get_connection() as conn:
         return pd.read_sql_query(query, conn)
 
+@cache_decorator
 def query_low_stock_inventory():
     """Query 5: Simulated Stock & Inventory Reorder Alert."""
     query = """
