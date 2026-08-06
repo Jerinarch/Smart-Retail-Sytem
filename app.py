@@ -24,7 +24,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom Enterprise Design System (Charcoal & Amber/Emerald Premium Theme)
+# Custom Executive Theme: Warm Ebony, Charcoal & Champagne Gold Accent Palette
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -34,8 +34,8 @@ st.markdown("""
     }
     
     .stApp {
-        background-color: #0f172a;
-        color: #f8fafc;
+        background-color: #121214;
+        color: #f4f4f5;
     }
     
     /* Header Styling */
@@ -48,24 +48,24 @@ st.markdown("""
     }
     
     .app-subtitle {
-        font-size: 1.0rem;
-        color: #94a3b8;
+        font-size: 0.95rem;
+        color: #a1a1aa;
         margin-bottom: 1.8rem;
         font-weight: 400;
     }
     
-    /* Premium Metric Card System */
+    /* Premium Warm Metric Cards */
     .metric-container {
-        background: #1e293b;
-        border: 1px solid #334155;
+        background: #18181b;
+        border: 1px solid #27272a;
         border-radius: 8px;
         padding: 20px 24px;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         transition: transform 0.2s ease, border-color 0.2s ease;
     }
     
     .metric-container:hover {
-        border-color: #f59e0b;
+        border-color: #d97706;
         transform: translateY(-1px);
     }
     
@@ -74,48 +74,35 @@ st.markdown("""
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        color: #94a3b8;
+        color: #a1a1aa;
         margin-bottom: 6px;
     }
     
     .metric-value {
         font-size: 1.85rem;
         font-weight: 700;
-        color: #f8fafc;
+        color: #f4f4f5;
         line-height: 1.2;
+    }
+    
+    .metric-accent-gold {
+        color: #f59e0b;
     }
     
     .metric-accent-emerald {
         color: #10b981;
     }
     
-    .metric-accent-amber {
-        color: #f59e0b;
-    }
-    
     /* Sidebar Customization */
     section[data-testid="stSidebar"] {
-        background-color: #0b1329;
-        border-right: 1px solid #1e293b;
+        background-color: #09090b;
+        border-right: 1px solid #27272a;
     }
     
     /* Table & Container Styling */
     .stDataFrame {
-        border: 1px solid #334155;
+        border: 1px solid #27272a;
         border-radius: 6px;
-    }
-    
-    /* Custom Badge */
-    .status-badge {
-        display: inline-block;
-        background-color: #1e293b;
-        color: #f59e0b;
-        border: 1px solid #d97706;
-        padding: 4px 10px;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        letter-spacing: 0.03em;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -171,7 +158,7 @@ if navigation == "Executive Dashboard":
         st.markdown(f"""
             <div class="metric-container">
                 <div class="metric-label">Total Revenue</div>
-                <div class="metric-value">${total_rev:,.2f}</div>
+                <div class="metric-value metric-accent-gold">${total_rev:,.2f}</div>
             </div>
         """, unsafe_allow_html=True)
     with col2:
@@ -185,7 +172,7 @@ if navigation == "Executive Dashboard":
         st.markdown(f"""
             <div class="metric-container">
                 <div class="metric-label">Average Profit Margin</div>
-                <div class="metric-value metric-accent-amber">{avg_margin:.1f}%</div>
+                <div class="metric-value">{avg_margin:.1f}%</div>
             </div>
         """, unsafe_allow_html=True)
     with col4:
@@ -228,7 +215,7 @@ if navigation == "Executive Dashboard":
                 x="Product Category",
                 y="Total Revenue ($)",
                 color="Profit Margin (%)",
-                color_continuous_scale="Cividis",
+                color_continuous_scale="YlOrBr",
                 template="plotly_dark"
             )
             fig_cat.update_layout(
@@ -249,7 +236,7 @@ if navigation == "Executive Dashboard":
                 locationmode="country names",
                 color="Total Revenue ($)",
                 hover_name="Country",
-                color_continuous_scale="Purples",
+                color_continuous_scale="YlOrRd",
                 template="plotly_dark"
             )
             fig_geo.update_layout(
@@ -316,7 +303,7 @@ elif navigation == "Natural Language Assistant":
                         x=text_cols[0],
                         y=numeric_cols[0],
                         color=numeric_cols[0],
-                        color_continuous_scale="Amber",
+                        color_continuous_scale="YlOrBr",
                         template="plotly_dark"
                     )
                     fig_auto.update_layout(
